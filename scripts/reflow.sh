@@ -12,6 +12,7 @@ DIRS=(
    "docs/spec"             # Functional specification
    "docs/architecture"     # Microarchitecture and power supply architecture
    "docs/reports"          # Follow-up weekly reports
+   "docs/wiki/assets"      # Figures, diagrams and other graphical elements
    "rtl/src"               # RTL source codes
    "rtl/pkg"               # RTL packages and dependencies
    "rtl/tb"                # Testbenches
