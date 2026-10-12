@@ -13,12 +13,13 @@ DIRS=(
    "docs/architecture"     # Microarchitecture and power supply architecture
    "docs/reports"          # Follow-up weekly reports
    "rtl/src"               # RTL source codes
+   "rtl/pkg"               # RTL packages and dependencies
    "rtl/tb"                # Testbenches
    "model"                 # Imported behavioral models (memory, PLL, etc)
    "formal"                # Formality scripts and reports
    "synth"                 # SDC, scripts and synthesis repots
    "power"                 # UPF files and reports
-   "scripts"               # Automatio flow scripts
+   "scripts"               # Automation flow scripts
    "workspace"             # Work directory
 )
 
