@@ -1,12 +1,20 @@
-# Advanced Encryption Standard (AES/FIPS-197)
+#Advanced Encryption Standard (AES/FIPS-197)
 
 ## Overview & Mathematical Foundations
 
-The Advanced Encryption Standard (AES) is a symmetric block cipher structured around a substitution-permutation network (SPN). Unlike its predecessor DES, AES operates on a fixed block size of 128 bits (represented as a $4 \times 4$ matrix of bytes called the State) and supports key lengths of 128, 192, or 256 bits, corresponding to 10, 12, or 14 transformation rounds respectively.All algebraic operations in AES are performed within the finite field $\text{GF}(2^8)$, where multiplication is modulo the irreducible polynomial:
+The Advanced Encryption Standard (AES) is a variant of Rijndael block cypher, announced by NIST in 2001 and adopted by the US government. The **US FIPS 192** standard defines a symmetric-key algorithm, meaning the same key is used for both encrypting and decrypting the data.
 
-$$m(x) = x^8 + x^4 + x^3 + x + 1$$
+The algorithm works with a fixed block size of **128 bits** and a key size of 128, 192 or 256 bits. The cypher key length defines the number of transformation rounds that convert the **plaintext** into the final **ciphertext**. Each round is a repetition of well-defined and sequential processing steps and may be exploited in hardware architectures for different PPA targets.
 
-## Core Transformation Stages
+| **Key Length** | **Rounds** |
+|:--------:|:---:|
+| 128 bits | 10  |
+| 192 bits | 12  |
+| 256 bits | 14  |
+
+## Algorithm Description
+
+![AES Algorithm](assets/aes_algorithm.png)
 
 Each standard round of AES consists of four distinct byte-oriented transformations:
 

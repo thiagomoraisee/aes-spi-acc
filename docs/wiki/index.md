@@ -19,7 +19,7 @@ Follow the steps below for setup your local machine to work with PRISM:
 
 0. Install dependencies
 ```
-pip install mkdocs mkdocs-material
+pip install mkdocs mkdocs-material python-markdown-math
 ```
 
 1. Clone the repository
