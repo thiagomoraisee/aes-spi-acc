@@ -40,6 +40,7 @@ The project is structured according to the Reference flow, with accordance with 
 
 ```
 aes-spi-acc             # Repository top level
+├── algorithm           # High-level functional models
 ├── docs                # Documentation artifacts
 │   ├── architecture    # Microarchitecture and power supply architecture
 │   ├── reports         # Follow-up weekly reports
