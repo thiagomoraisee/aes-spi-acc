@@ -1,0 +1,36 @@
+site_name: AES SPI Accelerator Project
+site_description: Low-power SoC-integrated AES-SPI cryptographic accelerator.
+site_author: Thiago M. de Oliveira
+
+docs_dir: wiki
+site_dir: site
+
+nav:
+  - Home: index.md
+  - AES Standard (FIPS-197): aes.md
+  - SPI Protocol: spi.md
+
+theme:
+  name: material
+  logo: assets/ciexpert_white.png
+  favicon: assets/ciexpert_logo.png
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: orange
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: amber
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+markdown_extensions:
+  - pymdownx.arithmatex:
+      generic: true
+
+extra_javascript:
+  - https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.js

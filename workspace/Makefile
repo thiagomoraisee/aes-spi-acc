@@ -5,7 +5,7 @@
 # Author     : Thiago M. de Oliveira <thiago.oliveira@embedded.ufcg.edu.br>              #
 # Description: Main automation for project execution. Designed to  be run from workspace #
 # ====================================================================================== #
-.PHONY: lint compile run waves clean clean_sim
+.PHONY: doc lint compile run waves clean clean_sim
 
 BLOCKNAME = accumulator
 
@@ -18,6 +18,10 @@ VCS_FLAGS = -full64 \
 				-timescale=1ns/1ps \
 				-debug_access+all \
 				-kdb
+
+# Build and view documentation
+doc:
+	mkdocs serve -f ../docs/mkdocs.yml --open
 
 # Check and create reference flow:
 flow:
