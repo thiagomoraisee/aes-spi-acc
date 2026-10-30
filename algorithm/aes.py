@@ -69,11 +69,14 @@ def rot(hex_list, shift, dir="left"):
         raise ValueError(f"Invalid direction: {dir}")
 
 class AESCore:
-    def __init__(self, key):
+    def __init__(self, key, text):
         self.key = hex2list(key)
+        self.text = hex2list(text)
         self.key_size_bits = 128
         self.num_round_keys = 11
         self.exp_key = []
+        self.round = 0
+        self.state = [self.text[4*i : 4*(i+1)] for i in range(4)]
 
     def key_expansion(self):
         N = int(self.key_size_bits/32) # Number of words of 32 bits per key
@@ -93,6 +96,12 @@ class AESCore:
             else:
                 self.exp_key.append( [w1 ^ w2 for w1, w2 in zip(self.exp_key[i-N], self.exp_key[i-1])] )
 
+    def add_round_key(self):
+        round_key = self.exp_key[4*self.round : 4*(self.round+1)]
+        for i in range(4):
+            for j in range(4):
+                self.state[i][j] = self.state[i][j] ^ round_key[i][j]
+
 
 def test_aux_funct():
     print(hex(list2hex([0xaa, 0xbb, 0xcc, 0xdd])))
@@ -102,12 +111,15 @@ def test_aux_funct():
 
 if __name__ == "__main__":
 
-    print("\n-----=== AES 128 Core Simulator ===-----\n")
+    print("\n-----===[ AES 128 Core Simulator ]===-----\n")
 
     key = "Thats my Kung Fu".encode('ascii').hex()
-    aes = AESCore(key)
+    text = "Two One Nine Two".encode('ascii').hex()
+
+    aes = AESCore(key, text)
     aes.key_expansion()
 
+    print(f"Plain Text  : {text}")
     print(f"Cipher Key  : {key}")
     print(f"Expanded Key: ", end="")
     for i in range(len(aes.exp_key)):
@@ -115,4 +127,22 @@ if __name__ == "__main__":
             print(f"{j:02x}", end=" ")
         print(f"   : W{i:02d} / R{int(i/4)+1:02d}")
         print(14*" ", end="")
+    print("")
+
+    print(f"ROUND #{aes.round}")
+    print(f"AES Step     : Add Round Key")
+    print(f"Initial State: ", end="")
+    for i in range(4):
+        for j in range(4):
+            print(f"{aes.state[i][j]:02x}", end=" ")
+        print("\n",14*" ", end="")
+    print("")
+
+    aes.add_round_key()
+
+    print(f"Final State  : ", end="")
+    for i in range(4):
+        for j in range(4):
+            print(f"{aes.state[i][j]:02x}", end=" ")
+        print("\n",14*" ", end="")
     print("")
