@@ -64,9 +64,47 @@ class AESCore:
                     result[i][j] ^= gfmult(self.state[i][k], MMIX[k][j]) 
         self.state = result
 
+class AES:
+    def __init__(self, cipherkey, plaintext):
+        self.cipherkey  = cipherkey
+        self.plaintext  = self._ecb(plaintext)
+        self.ciphertext = []
+        self.exp_key = []
+        self.tsize = len(self.plaintext)
+        self.core = AESCore(self.cipherkey, self.plaintext[0])
 
-if __name__ == "__main__":
+    def _ecb(self, text):
+        ecb_text_list = []
+        blocks  = int(len(text)/32) + 1
+        padding = len(text)%32
+        padding = 32 - padding
+        padded_text = text + (int(padding/2))*f"{int(padding/2):02x}"
+        for i in range(blocks):
+            if i < blocks:
+                ecb_text_list.append(padded_text[32*i : 32*(i+1)])
+        return ecb_text_list
+        
+    def encript(self):
+        self.core.key_expansion()
+        self.exp_key = self.core.exp_key # Save expanded key
+        for i in range(self.tsize):
+            self.core.__init__(self.cipherkey, self.plaintext[i])
+            self.core.exp_key = self.exp_key
+            self.core.add_round_key()
+            while self.core.round < 9:
+                self.core.round += 1
+                self.core.sub_bytes()
+                self.core.shift_rows()
+                self.core.mix_columns()
+                self.core.add_round_key()
+            self.core.round += 1
+            self.core.sub_bytes()
+            self.core.shift_rows()
+            self.core.add_round_key()
+            output = join(self.core.state)
+            self.ciphertext.append(output)
 
+def main():
     print("\n-----===[ AES 128 Core Simulator ]===-----\n")
 
     key = "Thats my Kung Fu".encode('ascii').hex()
@@ -118,7 +156,6 @@ if __name__ == "__main__":
         aes.add_round_key()
         matview(aes.state, shift=14)
 
-
     # AES Final Round
 
     aes.round += 1
@@ -137,3 +174,13 @@ if __name__ == "__main__":
     print(f"Add Round Key: ")
     aes.add_round_key()
     matview(aes.state, shift=14)
+
+    print(join(aes.state))
+
+if __name__ == "__main__":
+    key = "Thats my Kung Fu".encode('ascii').hex()
+    text = "This is a long long secret text e".encode('ascii').hex()
+    aes = AES(cipherkey=key, plaintext=text)
+    aes.encript()
+    print(aes.ciphertext)
+

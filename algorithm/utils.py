@@ -51,6 +51,12 @@ def list2hex(hex_num_list, endianess = "big"):
 
     return hex_num
 
+def join(state_matrix):
+    text = ""
+    for line in state_matrix:
+        text += f"{list2hex(line):08x}"
+    return text
+
 def rcon(round):
     if round < 1:
         raise ValueError(f"Invalid round number {round}. Must be > 0.")
@@ -72,7 +78,6 @@ def rot(hex_list, shift, dir="left"):
         return hex_list[-shift:] + hex_list[:-shift]
     else:
         raise ValueError(f"Invalid direction: {dir}")
-
 
 def transpose(matrix):
     rows = len(matrix)       # Number of rows
@@ -99,7 +104,6 @@ def gfmult(num, coef):
         return gfmult(num, 2) ^ num
     else:
         raise ValueError(f"Unsuported coefficient: {coef}")
-
 
 def matview(matrix, llabels="", rlabels="", shift=0, format="02x", ljust="left"):
 
