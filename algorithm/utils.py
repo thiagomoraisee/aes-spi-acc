@@ -137,6 +137,25 @@ def matview(matrix, llabels="", rlabels="", shift=0, format="02x", ljust="left")
             print(f"{matrix[i][j]:02x}", end=" ")
         print(f"{right_labels[i]}")
 
+def read_hex_file(filepath):
+    clean_hex = ""
+    with open(filepath, "r") as f:
+        for line in f:
+            # Remove inline comments starting with '#' or '//'
+            line = line.split("#")[0].split("//")[0]
+            # Strip whitespace and append
+            clean_hex += line.strip()
+    # Remove any stray '0x' prefixes or spaces
+    return clean_hex.replace("0x", "").replace(" ", "")
+
+def write_hex_file(filepath, msg):
+    with open(filepath, "w") as f:
+        if isinstance(msg, list):
+            for block in msg:
+                f.write(f"{block}\n")
+        else:
+            f.write(f"{msg}\n")
+
 if __name__ == "__main__":
     print(hex(list2hex([0xaa, 0xbb, 0xcc, 0xdd])))
     print(hex(list2hex(rot([0xaa, 0xbb, 0xcc, 0xdd], 1))))
@@ -154,3 +173,22 @@ if __name__ == "__main__":
     for i in range(1,4):
         print(f"GF MULT: 0x57 x {i:02x} = ",hex(gfmult(0x57, i)))
 
+    print("\n -----=== HEX FILE MANAGEMENT ===-----")
+
+    print(">>> Writing to test.hex file...")
+    msg_ascii = "It's a Test File"
+    msg_hex   = msg_ascii.encode("ascii").hex()
+    write_hex_file("test.hex", msg_hex)
+
+    print(">>> Reading from test.hex file...")
+    msg_hex   = read_hex_file("test.hex")
+    msg_ascii = bytes.fromhex(msg_hex).decode("ascii")
+    print(f"MESSAGE: {msg_hex}")
+    print(f"         ({msg_ascii})")
+
+
+    k = "Thats my Kung Fu".encode("ascii").hex()
+    t = "This is a long long secret text e".encode("ascii").hex()
+
+    write_hex_file("key.hex", k)
+    write_hex_file("text.hex", t)

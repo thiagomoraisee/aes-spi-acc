@@ -65,13 +65,31 @@ class AESCore:
         self.state = result
 
 class AES:
-    def __init__(self, cipherkey, plaintext):
+    def __init__(self, cipherkey, plaintext, opmode=None, verbosity=2):
+        self.verbosity = verbosity
+        if opmode == None:
+            self.plaintext  = [plaintext]
+            self.opmode = "None (AES 128 Core)"
+        else:
+            if opmode.lower() == "ecb":
+                self.plaintext  = self._ecb(plaintext)
+                self.opmode = "Electronic Codebook (ECB)"
+            else:
+                raise ValueError("Unsuported operation mode:", opmode)
         self.cipherkey  = cipherkey
-        self.plaintext  = self._ecb(plaintext)
         self.ciphertext = []
         self.exp_key = []
         self.tsize = len(self.plaintext)
         self.core = AESCore(self.cipherkey, self.plaintext[0])
+
+        if self.verbosity >= 1:
+            print("\n" + 7*" " +"-----===[ AES 128 ]===-----\n")
+            print(f"> Operation Mode: {self.opmode}")
+            print(f"> Cipher Key: {self.cipherkey}")
+            print(f"> Plain Text: ", end="")
+            for block in self.plaintext:
+                print(block+"\n"+14*" ", end="")
+            print("")
 
     def _ecb(self, text):
         ecb_text_list = []
@@ -85,102 +103,123 @@ class AES:
         return ecb_text_list
         
     def encript(self):
+
+        # Step 0 : Expand Key
         self.core.key_expansion()
         self.exp_key = self.core.exp_key # Save expanded key
+        if self.verbosity >= 2:
+            print(15*" "+f"# ROUND {self.core.round} #")
+            print(f"> Key Expansion:")
+            matview(self.exp_key,
+                    shift   = 3,
+                    ljust   = "right",
+                    llabels = [f"Word {i:02d} :  " for i in range(len(self.exp_key))],
+                    rlabels = [f"  : Round {int(i/4):02d}" for i in range(len(self.exp_key))])
+
+        # Iterate rounds loops for each text block:
         for i in range(self.tsize):
+
             self.core.__init__(self.cipherkey, self.plaintext[i])
             self.core.exp_key = self.exp_key
+            if self.verbosity >= 2:
+                print(f"> Initial State:")
+                matview(self.core.state, shift=14)
+
             self.core.add_round_key()
+            if self.verbosity >= 2:
+                print(f"> Add Round Key:")
+                matview(self.core.state, shift=14)
+
             while self.core.round < 9:
                 self.core.round += 1
                 self.core.sub_bytes()
+                if self.verbosity >= 2:
+                    print("\n"+15*" "+f"# ROUND {self.core.round} #")
+                    print(f"> Sub Bytes:")
+                    matview(self.core.state, shift=14)
+
                 self.core.shift_rows()
+                if self.verbosity >= 2:
+                    print(f"> Shift Rows:")
+                    matview(self.core.state, shift=14)
+
                 self.core.mix_columns()
+                if self.verbosity >= 2:
+                    print(f"> Mix Columns:")
+                    matview(self.core.state, shift=14)
+
                 self.core.add_round_key()
+                if self.verbosity >= 2:
+                    print(f"> Add Round Key:")
+                    matview(self.core.state, shift=14)
+
             self.core.round += 1
             self.core.sub_bytes()
+            if self.verbosity >= 2:
+                print("\n"+15*" "+f"# ROUND {self.core.round} #")
+                print(f"> Sub Bytes:")
+                matview(self.core.state, shift=14)
+
             self.core.shift_rows()
+            if self.verbosity >= 2:
+                print(f"> Shift Rows:")
+                matview(self.core.state, shift=14)
+
             self.core.add_round_key()
+            if self.verbosity >= 2:
+                print(f"> Add Round Key:")
+                matview(self.core.state, shift=14)
+
             output = join(self.core.state)
             self.ciphertext.append(output)
+            if self.verbosity >= 1:
+                print(f"\n> CIPHER BLOCK ({i+1}/{self.tsize}): {output}\n")
 
-def main():
-    print("\n-----===[ AES 128 Core Simulator ]===-----\n")
+def gen_key_text_files(dir="."):
+    if dir.find(" ") == -1:
+        keyfile  = f"{dir}/key.hex"
+        textfile = f"{dir}/text.hex"
 
-    key = "Thats my Kung Fu".encode('ascii').hex()
-    text = "Two One Nine Two".encode('ascii').hex()
+        key_msg_ascii  = "Thats my Kung Fu"
+        text_msg_ascii = "Two One Nine Two"
 
-    aes = AESCore(key, text)
-    aes.key_expansion()
+        print(f"[INFO] Generating {keyfile} ... ", end="")
+        key_msg_hex  = key_msg_ascii.encode("ascii").hex()
+        write_hex_file(keyfile, key_msg_hex)
+        print("DONE")
 
-    print(f"Plain Text  : {text}")
-    print(f"Cipher Key  : {key}")
-    print(f"Expanded Key: ")
-    matview(aes.exp_key,
-            shift   = 3,
-            ljust   = "right",
-            llabels = [f"Word {i:02d} :  " for i in range(len(aes.exp_key))],
-            rlabels = [f"  : Round {int(i/4):02d}" for i in range(len(aes.exp_key))])
+        print(f"[INFO] Generating {textfile} ... ", end="")
+        text_msg_hex = text_msg_ascii.encode("ascii").hex()
+        write_hex_file(textfile, text_msg_hex)
+        print("DONE")
+    else:
+        raise ValueError(f"Invalid directory ('{dir}')")
 
-    print(f"             .-------------.")
-    print(f"       ---== |  ROUND #{aes.round:02d}  | ==---")
-    print(f"             '-------------'")
-    print(f"Initial State: ")
-    matview(aes.state, shift=14)
-
-    print(f"Add Round Key: ")
-    aes.add_round_key()
-    matview(aes.state, shift=14)
-
-    while aes.round < 9:
-
-        aes.round += 1
-
-        print(f"             .-------------.")
-        print(f"       ---== |  ROUND #{aes.round:02d}  | ==---")
-        print(f"             '-------------'")
-
-        print(f"Substitution Bytes:")
-        aes.sub_bytes()
-        matview(aes.state, shift=14)
-
-        print(f"Shift rows:")
-        aes.shift_rows()
-        matview(aes.state, shift=14)
-
-        print(f"Mix Columns:")
-        aes.mix_columns()
-        matview(aes.state, shift=14)
-
-        print(f"Add Round Key: ")
-        aes.add_round_key()
-        matview(aes.state, shift=14)
-
-    # AES Final Round
-
-    aes.round += 1
-    print(f"             .-------------.")
-    print(f"       ---== |  ROUND #{aes.round:02d}  | ==---")
-    print(f"             '-------------'")
-
-    print(f"Substitution Bytes:")
-    aes.sub_bytes()
-    matview(aes.state, shift=14)
-
-    print(f"Shift rows:")
-    aes.shift_rows()
-    matview(aes.state, shift=14)
-
-    print(f"Add Round Key: ")
-    aes.add_round_key()
-    matview(aes.state, shift=14)
-
-    print(join(aes.state))
-
+# MAIN FUNCTION:
 if __name__ == "__main__":
-    key = "Thats my Kung Fu".encode('ascii').hex()
-    text = "This is a long long secret text e".encode('ascii').hex()
-    aes = AES(cipherkey=key, plaintext=text)
-    aes.encript()
-    print(aes.ciphertext)
+    import os
+    filedir  = "."
+    keyfile  = f"{filedir}/key.hex"
+    textfile = f"{filedir}/text.hex"
 
+    if not os.path.isfile(keyfile) or not os.path.isfile(textfile):
+        gen_key_text_files(filedir)
+
+    print(f"[INFO] Reading Cipher Key from {keyfile} file...", end="")
+    key = read_hex_file(keyfile)
+    print("DONE")
+    print("HEX  : ",key)
+    print("ASCII: ",bytes.fromhex(key).decode("ascii"))
+
+    print(f"[INFO] Reading Plain Text from {textfile} file...", end="")
+    text = read_hex_file(textfile)
+    print("DONE")
+    print("HEX  : ",text)
+    print("ASCII: ",bytes.fromhex(text).decode("ascii"))
+
+    aes = AES(cipherkey=key,
+              plaintext=text,
+              opmode=None,
+              verbosity=1)
+
+    aes.encript()
