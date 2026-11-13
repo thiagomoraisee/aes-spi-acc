@@ -220,6 +220,6 @@ if __name__ == "__main__":
     aes = AES(cipherkey=key,
               plaintext=text,
               opmode=None,
-              verbosity=1)
+              verbosity=2)
 
     aes.encript()
