@@ -64,34 +64,102 @@ class AESCore:
                     result[i][j] ^= gfmult(self.state[i][k], MMIX[k][j]) 
         self.state = result
 
+    def encript(self, verbose=False):
+
+        if verbose:
+            print(f"> Initial State:")
+            matview(self.state, shift=14)
+
+        self.add_round_key()
+        if verbose:
+            print(f"> Add Round Key:")
+            matview(self.state, shift=14)
+
+        while self.round < 9:
+            self.round += 1
+
+            self.sub_bytes()
+            if verbose :
+                print("\n"+15*" "+f"# ROUND {self.round} #")
+                print(f"> Sub Bytes:")
+                matview(self.state, shift=14)
+
+            self.shift_rows()
+            if verbose:
+                print(f"> Shift Rows:")
+                matview(self.state, shift=14)
+
+            self.mix_columns()
+            if verbose:
+                print(f"> Mix Columns:")
+                matview(self.state, shift=14)
+
+            self.add_round_key()
+            if verbose:
+                print(f"> Add Round Key:")
+                matview(self.state, shift=14)
+
+        self.round += 1
+
+        self.sub_bytes()
+        if verbose:
+            print("\n"+15*" "+f"# ROUND {self.round} #")
+            print(f"> Sub Bytes:")
+            matview(self.state, shift=14)
+
+        self.shift_rows()
+        if verbose:
+            print(f"> Shift Rows:")
+            matview(self.state, shift=14)
+
+        self.add_round_key()
+        if verbose:
+            print(f"> Add Round Key:")
+            matview(self.state, shift=14)
+
+
+
 class AES:
-    def __init__(self, cipherkey, plaintext, opmode=None, verbosity=2):
+    def __init__(self, cipherkey, plaintext, iv=None, opmode=None, verbosity=2):
         self.verbosity = verbosity
+        self.sup_opmode_dict = {"none" : "None (AES 128 Core)",
+                                "ecb"  : "Electronic Codebook (ECB)",
+                                "cbc"  : "Cipher Block Chaining (CBC)",
+                                "pcbc" : "Propagating Cipher Block Chaining (PCBC)",
+                                "cfb"  : "Cipher Feedback Mode (CFB)",
+                                "ofb"  : "Output Feedback Mode (OFB)",
+                                "ctb"  : "Counter Mode (CTB)"}
         if opmode == None:
             self.plaintext  = [plaintext]
-            self.opmode = "None (AES 128 Core)"
+            self.opmode = "none"
         else:
-            if opmode.lower() == "ecb":
-                self.plaintext  = self._ecb(plaintext)
-                self.opmode = "Electronic Codebook (ECB)"
-            else:
-                raise ValueError("Unsuported operation mode:", opmode)
+            self.plaintext  = self._format_blocks(plaintext)
+            self.opmode = opmode.lower()
+            if self.opmode not in self.sup_opmode_dict.keys():
+                raise ValueError("Unsuported operation mode:", self.opmode)
+
         self.cipherkey  = cipherkey
         self.ciphertext = []
         self.exp_key = []
+        self.iv = hex2list(iv)
         self.tsize = len(self.plaintext)
+
+        # AES128 core instanciation:
         self.core = AESCore(self.cipherkey, self.plaintext[0])
+
+        if (self.iv is None) and (self.opmode not in ["none", "ecb"]):
+            raise ValueError("You must specify input vector")
 
         if self.verbosity >= 1:
             print("\n" + 7*" " +"-----===[ AES 128 ]===-----\n")
-            print(f"> Operation Mode: {self.opmode}")
+            print(f"> Operation Mode: {self.sup_opmode_dict[self.opmode]}")
             print(f"> Cipher Key: {self.cipherkey}")
             print(f"> Plain Text: ", end="")
             for block in self.plaintext:
                 print(block+"\n"+14*" ", end="")
             print("")
 
-    def _ecb(self, text):
+    def _format_blocks(self, text):
         ecb_text_list = []
         blocks  = int(len(text)/32) + 1
         padding = len(text)%32
@@ -101,10 +169,10 @@ class AES:
             if i < blocks:
                 ecb_text_list.append(padded_text[32*i : 32*(i+1)])
         return ecb_text_list
-        
+
     def encript(self):
 
-        # Step 0 : Expand Key
+        # Expand Key
         self.core.key_expansion()
         self.exp_key = self.core.exp_key # Save expanded key
         if self.verbosity >= 2:
@@ -116,64 +184,42 @@ class AES:
                     llabels = [f"Word {i:02d} :  " for i in range(len(self.exp_key))],
                     rlabels = [f"  : Round {int(i/4):02d}" for i in range(len(self.exp_key))])
 
-        # Iterate rounds loops for each text block:
-        for i in range(self.tsize):
+        # -----=== ELECTRONIC CODEBOOK (ECB) MODE ===----- # 
+        if self.opmode in ["ecb", "none"]:
+            # Iterate rounds loops for each text block:
+            for i in range(self.tsize):
 
-            self.core.__init__(self.cipherkey, self.plaintext[i])
-            self.core.exp_key = self.exp_key
-            if self.verbosity >= 2:
-                print(f"> Initial State:")
-                matview(self.core.state, shift=14)
+                self.core.__init__(self.cipherkey, self.plaintext[i])
+                self.core.exp_key = self.exp_key
 
-            self.core.add_round_key()
-            if self.verbosity >= 2:
-                print(f"> Add Round Key:")
-                matview(self.core.state, shift=14)
+                self.core.encript(verbose=self.verbosity >= 2)
 
-            while self.core.round < 9:
-                self.core.round += 1
-                self.core.sub_bytes()
-                if self.verbosity >= 2:
-                    print("\n"+15*" "+f"# ROUND {self.core.round} #")
-                    print(f"> Sub Bytes:")
-                    matview(self.core.state, shift=14)
+                output = join(self.core.state)
+                self.ciphertext.append(output)
+                if self.verbosity >= 1:
+                    print(f"\n> CIPHER BLOCK ({i+1}/{self.tsize}): {output}\n")
 
-                self.core.shift_rows()
-                if self.verbosity >= 2:
-                    print(f"> Shift Rows:")
-                    matview(self.core.state, shift=14)
+        # -----=== CIPHER BLOCK CHAINING (CBC) MODE ===----- # 
+        if self.opmode == "cbc":
+            # Iterate rounds loops for each text block:
+            for i in range(self.tsize):
 
-                self.core.mix_columns()
-                if self.verbosity >= 2:
-                    print(f"> Mix Columns:")
-                    matview(self.core.state, shift=14)
+                self.core.__init__(self.cipherkey, self.plaintext[i])
+                self.core.exp_key = self.exp_key
 
-                self.core.add_round_key()
-                if self.verbosity >= 2:
-                    print(f"> Add Round Key:")
-                    matview(self.core.state, shift=14)
+                if i == 0:
+                    for j in range(16):
+                        self.core.text[j] = self.iv[j] ^ self.core.text[j]
+                else:
+                    for j in range(16):
+                        self.core.text[j] = hex2list(output)[j] ^ self.core.text[j]
 
-            self.core.round += 1
-            self.core.sub_bytes()
-            if self.verbosity >= 2:
-                print("\n"+15*" "+f"# ROUND {self.core.round} #")
-                print(f"> Sub Bytes:")
-                matview(self.core.state, shift=14)
+                self.core.encript(verbose=self.verbosity >= 2)
 
-            self.core.shift_rows()
-            if self.verbosity >= 2:
-                print(f"> Shift Rows:")
-                matview(self.core.state, shift=14)
-
-            self.core.add_round_key()
-            if self.verbosity >= 2:
-                print(f"> Add Round Key:")
-                matview(self.core.state, shift=14)
-
-            output = join(self.core.state)
-            self.ciphertext.append(output)
-            if self.verbosity >= 1:
-                print(f"\n> CIPHER BLOCK ({i+1}/{self.tsize}): {output}\n")
+                output = join(self.core.state)
+                self.ciphertext.append(output)
+                if self.verbosity >= 1:
+                    print(f"\n> CIPHER BLOCK ({i+1}/{self.tsize}): {output}\n")
 
 def gen_key_text_files(dir="."):
     if dir.find(" ") == -1:
@@ -219,7 +265,8 @@ if __name__ == "__main__":
 
     aes = AES(cipherkey=key,
               plaintext=text,
-              opmode=None,
-              verbosity=2)
+              opmode="cbc",
+              iv=key,
+              verbosity=1)
 
     aes.encript()
