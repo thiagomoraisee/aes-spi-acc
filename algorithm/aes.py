@@ -194,32 +194,35 @@ class AES:
 
                 self.core.encript(verbose=self.verbosity >= 2)
 
-                output = join(self.core.state)
-                self.ciphertext.append(output)
+                output_data = join(self.core.state)
+                self.ciphertext.append(output_data)
                 if self.verbosity >= 1:
-                    print(f"\n> CIPHER BLOCK ({i+1}/{self.tsize}): {output}\n")
+                    print(f"\n> CIPHER BLOCK ({i+1}/{self.tsize}): {output_data}\n")
 
         # -----=== CIPHER BLOCK CHAINING (CBC) MODE ===----- # 
         if self.opmode == "cbc":
             # Iterate rounds loops for each text block:
             for i in range(self.tsize):
 
-                self.core.__init__(self.cipherkey, self.plaintext[i])
-                self.core.exp_key = self.exp_key
-
+                input_data = []
+                plaintext = hex2list(self.plaintext[i])
                 if i == 0:
                     for j in range(16):
-                        self.core.text[j] = self.iv[j] ^ self.core.text[j]
+                        input_data.append(self.iv[j] ^ plaintext[j])
                 else:
                     for j in range(16):
-                        self.core.text[j] = hex2list(output)[j] ^ self.core.text[j]
+                        input_data.append( hex2list(output_data)[j] ^ plaintext[j])
+
+                input_data_hex = f"{list2hex(input_data):032x}"
+                self.core.__init__(self.cipherkey, input_data_hex)
+                self.core.exp_key = self.exp_key
 
                 self.core.encript(verbose=self.verbosity >= 2)
 
-                output = join(self.core.state)
-                self.ciphertext.append(output)
+                output_data = join(self.core.state)
+                self.ciphertext.append(output_data)
                 if self.verbosity >= 1:
-                    print(f"\n> CIPHER BLOCK ({i+1}/{self.tsize}): {output}\n")
+                    print(f"\n> CIPHER BLOCK ({i+1}/{self.tsize}): {output_data}\n")
 
 def gen_key_text_files(dir="."):
     if dir.find(" ") == -1:
@@ -244,6 +247,7 @@ def gen_key_text_files(dir="."):
 # MAIN FUNCTION:
 if __name__ == "__main__":
     import os
+
     filedir  = "."
     keyfile  = f"{filedir}/key.hex"
     textfile = f"{filedir}/text.hex"
@@ -270,3 +274,11 @@ if __name__ == "__main__":
               verbosity=1)
 
     aes.encript()
+
+    cipherfile = textfile.removesuffix(".hex")+f"_{aes.opmode}.hex"
+    print(f"[INFO] Writing ciphertext to {cipherfile} file ... ", end="")
+    with open(cipherfile, "w") as f:
+        for block in aes.ciphertext:
+            f.write(block)
+
+    print("DONE")

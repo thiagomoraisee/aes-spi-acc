@@ -37,15 +37,16 @@ def hex2list(hex_data, nbytes=2):
     return hex_data_list
 
 def list2hex(hex_num_list, endianess = "big"):
+    hex_list = hex_num_list.copy()
     if endianess.lower() == "big":
-        hex_num = hex_num_list.pop(0)
-        while(len(hex_num_list) > 0):
-            hex_num = (hex_num << 2*4) | hex_num_list.pop(0) # Shift left and or-combine
+        hex_num = hex_list.pop(0)
+        while(len(hex_list) > 0):
+            hex_num = (hex_num << 2*4) | hex_list.pop(0) # Shift left and or-combine
 
     elif endianess.lower() == "little":
-        hex_num = hex_num_list.pop()
-        while(len(hex_num_list) > 0):
-            hex_num = (hex_num << 2*4) | hex_num_list.pop() # Shift left and or-combine
+        hex_num = hex_list.pop()
+        while(len(hex_list) > 0):
+            hex_num = (hex_num << 2*4) | hex_list.pop() # Shift left and or-combine
     else:
         raise ValueError(f"Invalid bit order: {endianess}-endian")
 
