@@ -43,25 +43,34 @@ class AESCore:
             for j in range(4):
                 self.state[i][j] = self.state[i][j] ^ round_key[i][j]
 
-    def sub_bytes(self):
+    def sub_bytes(self, inv=False):
         for i in range(4):
             for j in range(4):
                 lsb = 0x0F & self.state[i][j]
                 msb = self.state[i][j] >> 4
-                self.state[i][j] = SBOX[msb][lsb]
+                if not inv:
+                    self.state[i][j] = SBOX[msb][lsb]
+                else:
+                    self.state[i][j] = INVSBOX[msb][lsb]
 
-    def shift_rows(self):
+    def shift_rows(self, inv=False):
         state_t = transpose(self.state)
         for i in range(4):
-            self.state[i] = rot(state_t[i], i)
+            if not inv:
+                self.state[i] = rot(state_t[i], i, dir="left")
+            else:
+                self.state[i] = rot(state_t[i], i, dir="right")
         self.state = transpose(self.state)
 
-    def mix_columns(self):
+    def mix_columns(self, inv=False):
         result = [[0x00 for _ in range(4)] for _ in range(4)]
         for i in range(4):
             for j in range(4):
                 for k in range(4):
-                    result[i][j] ^= gfmult(self.state[i][k], MMIX[k][j]) 
+                    if not inv:
+                        result[i][j] ^= gfmult(self.state[i][k], MMIX[k][j]) 
+                    else:
+                        result[i][j] ^= gfmult(self.state[i][k], INVMMIX[k][j]) 
         self.state = result
 
     def encript(self, verbose=False):
@@ -117,32 +126,77 @@ class AESCore:
             print(f"> Add Round Key:")
             matview(self.state, shift=14)
 
+    def decript(self, verbose=False):
 
+        self.round = 10 # Initial round
+        print("\n"+15*" "+f"# ROUND {self.round} #")
+
+        if verbose:
+            print(f"> Initial State:")
+            matview(self.state, shift=14)
+
+        self.add_round_key()
+        if verbose:
+            print(f"> Add Round Key:")
+            matview(self.state, shift=14)
+
+        while self.round > 0:
+            self.round -= 1
+
+            self.shift_rows(inv=True)
+            if verbose:
+                print("\n"+15*" "+f"# ROUND {self.round} #")
+                print(f"> Inv Shift Rows:")
+                matview(self.state, shift=14)
+
+            self.sub_bytes(inv=True)
+            if verbose:
+                print(f"> Inv Sub Bytes:")
+                matview(self.state, shift=14)
+
+            self.add_round_key()
+            if verbose:
+                print(f"> Add Round Key:")
+                matview(self.state, shift=14)
+
+            if self.round > 0:
+                self.mix_columns(inv=True)
+                if verbose:
+                    print(f"> Inv Mix Columns:")
+                    matview(self.state, shift=14)
 
 class AES:
-    def __init__(self, cipherkey, plaintext, iv=None, opmode=None, verbosity=2):
+    def __init__(self,
+                 cipherkey,
+                 plaintext,
+                 ciphertext = None,
+                 iv         = None,
+                 opmode     = None,
+                 verbosity  = 2):
+
         self.verbosity = verbosity
         self.sup_opmode_dict = {"none" : "None (AES 128 Core)",
                                 "ecb"  : "Electronic Codebook (ECB)",
                                 "cbc"  : "Cipher Block Chaining (CBC)",
-                                "pcbc" : "Propagating Cipher Block Chaining (PCBC)",
-                                "cfb"  : "Cipher Feedback Mode (CFB)",
-                                "ofb"  : "Output Feedback Mode (OFB)",
-                                "ctb"  : "Counter Mode (CTB)"}
+                                "pcbc" : "Propagating Cipher Block Chaining (PCBC)", #TODO
+                                "cfb"  : "Cipher Feedback Mode (CFB)", #TODO
+                                "ofb"  : "Output Feedback Mode (OFB)", #TODO
+                                "ctb"  : "Counter Mode (CTB)"} #TODO
         if opmode == None:
-            self.plaintext  = [plaintext]
-            self.opmode = "none"
+            self.opmode     = "none"
+            self.plaintext  = [plaintext] if plaintext is not None else []
         else:
-            self.plaintext  = self._format_blocks(plaintext)
             self.opmode = opmode.lower()
             if self.opmode not in self.sup_opmode_dict.keys():
                 raise ValueError("Unsuported operation mode:", self.opmode)
+            self.plaintext  = self._format_blocks(plaintext)
 
+        self.ciphertext = [ciphertext] if ciphertext is not None else []
         self.cipherkey  = cipherkey
-        self.ciphertext = []
-        self.exp_key = []
-        self.iv = hex2list(iv)
-        self.tsize = len(self.plaintext)
+        self.exp_key    = []
+        self.iv         = hex2list(iv) if iv is not None else []
+        self.tsize      = len(self.plaintext)
+        self.csize      = len(self.ciphertext)
 
         # AES128 core instanciation:
         self.core = AESCore(self.cipherkey, self.plaintext[0])
@@ -151,7 +205,10 @@ class AES:
             raise ValueError("You must specify input vector")
 
         if self.verbosity >= 1:
-            print("\n" + 7*" " +"-----===[ AES 128 ]===-----\n")
+            print("")
+            print("      -----===.===========.===-----    ")
+            print("  -------====::  AES 128  ::====-------")
+            print("      -----==='==========='===-----  \n")
             print(f"> Operation Mode: {self.sup_opmode_dict[self.opmode]}")
             print(f"> Cipher Key: {self.cipherkey}")
             print(f"> Plain Text: ", end="")
@@ -171,7 +228,6 @@ class AES:
         return ecb_text_list
 
     def encript(self):
-
         # Expand Key
         self.core.key_expansion()
         self.exp_key = self.core.exp_key # Save expanded key
@@ -224,6 +280,20 @@ class AES:
                 if self.verbosity >= 1:
                     print(f"\n> CIPHER BLOCK ({i+1}/{self.tsize}): {output_data}\n")
 
+    def decript(self, ciphertext=None):
+        if len(self.ciphertext) == 0:
+            raise ValueError(f"You must to specify a CipherText")
+
+        self.csize = len(self.ciphertext)
+        for i in range(self.csize):
+            self.core.decript(verbose=self.verbosity >= 2)
+
+            output_data = join(self.core.state)
+            self.plaintext = []
+            self.plaintext.append(output_data)
+            if self.verbosity >= 1:
+                print(f"\n> INV CIPHER BLOCK: {output_data}\n")
+
 def gen_key_text_files(dir="."):
     if dir.find(" ") == -1:
         keyfile  = f"{dir}/key.hex"
@@ -267,12 +337,13 @@ if __name__ == "__main__":
     print("HEX  : ",text)
     print("ASCII: ",bytes.fromhex(text).decode("ascii"))
 
-    aes = AES(cipherkey=key,
-              plaintext=text,
-              opmode="cbc",
-              iv=key,
-              verbosity=1)
+    aes = AES(cipherkey = key,
+              plaintext = text,
+              opmode    = None,
+              iv        = key,
+              verbosity = 2)
 
+    print("\n   -------=====[ ENCRIPT ]=====-------\n")
     aes.encript()
 
     cipherfile = textfile.removesuffix(".hex")+f"_{aes.opmode}.hex"
@@ -280,5 +351,12 @@ if __name__ == "__main__":
     with open(cipherfile, "w") as f:
         for block in aes.ciphertext:
             f.write(block)
-
     print("DONE")
+
+    print("\n   -------=====[ DECRIPT ]=====-------\n")
+    aes.decript()
+    print(f"[INFO] AES128 recoverd plaintext")
+    print("HEX  : ",aes.plaintext[0])
+    print("ASCII: ",bytes.fromhex(aes.plaintext[0]).decode("ascii"))
+
+
